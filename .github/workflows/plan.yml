@@ -44,7 +44,7 @@ jobs:
       # Short-lived credentials minted per run. No access key is ever stored
       # in the repository, which is the point of the OIDC trust relationship.
       - name: Assume the deployment role
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION || 'eu-north-1' }}
