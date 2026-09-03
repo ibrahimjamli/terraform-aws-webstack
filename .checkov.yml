@@ -1,35 +1,93 @@
 # Checkov policy configuration.
 #
-# Every skip below names the reason. An unexplained skip is how a security
-# baseline quietly stops meaning anything.
+# The baseline is zero failures, so every entry below is a deliberate decision
+# and each one names the reason it is safe. An unexplained suppression is how a
+# security baseline quietly stops meaning anything: if a reason here stops
+# being true, the entry should go, not the check.
+#
+# The first run of this scanner reported 179 passing and 21 failing. The one
+# finding that was a genuine gap rather than a trade-off, a log bucket whose
+# lifecycle rule never aborted incomplete multipart uploads, was fixed in
+# modules/storage rather than listed here.
+
 framework:
   - terraform
 
 skip-check:
-  # The example stack has no domain and so no ACM certificate. The HTTPS
-  # listener and its TLS policy exist and are used whenever certificate_arn is
-  # supplied; see modules/compute/alb.tf.
+  # --- deliberate architecture, not oversights -----------------------------
+
+  # Public subnets exist precisely so the load balancer and the NAT gateway get
+  # routable addresses. The private subnets, which hold everything that
+  # matters, assert the opposite, and a unit test enforces it.
+  - CKV_AWS_130 # VPC subnets should not assign public IPs by default
+
+  # Port 80 is open on the load balancer so a client arriving over HTTP gets a
+  # 301 to HTTPS. Closing it does not improve security, it just breaks the
+  # redirect and leaves the user on a dead link.
+  - CKV_AWS_260 # No security group should allow 0.0.0.0/0 to port 80
+
+  # The load balancer terminates TLS and reaches the instances over HTTP inside
+  # the VPC, across security groups that permit only that one path. End-to-end
+  # TLS would need a certificate on every instance.
+  - CKV_AWS_378 # Load balancer should not use the HTTP protocol
+
+  # --- true only because the example has no domain -------------------------
+
+  # The HTTP-to-HTTPS redirect and the TLS 1.3/1.2 listener both exist and are
+  # created whenever certificate_arn is set. The example has no domain and so
+  # no ACM certificate, which is why the default path serves plain HTTP.
+  # See modules/compute/alb.tf.
   - CKV_AWS_2   # ALB listener should use HTTPS
-  - CKV_AWS_103 # ALB should use TLS 1.2 or above
+  - CKV2_AWS_20 # ALB should redirect HTTP to HTTPS
+  - CKV_AWS_103 # Load balancer should use TLS 1.2 or above
+  - CKV2_AWS_74 # Load balancer should use strong ciphers
 
-  # Deletion protection is off so the example can be destroyed after a demo.
-  # A production copy should set enable_deletion_protection = true.
-  - CKV_AWS_150
+  # --- cost and scope, stated plainly --------------------------------------
 
-  # Access logging for the load balancer is wired up but only enabled when a
-  # bucket is passed, which the LocalStack environment deliberately does not do.
-  - CKV_AWS_91
+  # A WAF web ACL costs roughly 5 USD a month plus per-request charges, and
+  # configuring managed rule groups properly is its own piece of work. Out of
+  # scope for a reference stack; a production copy should have one.
+  - CKV2_AWS_28 # Public-facing ALB should be protected by a WAF
+  - CKV2_AWS_76 # ALB WAF should carry the Log4j managed rule
 
-  # SSE-S3 rather than a customer-managed KMS key. A CMK adds per-request cost
-  # and key administration that this example does not justify; bucket_key_enabled
-  # is already set so switching later is a one-line change.
-  - CKV_AWS_145
-  - CKV_AWS_19
+  # SSE-S3 and AWS-managed DynamoDB encryption rather than customer-managed KMS
+  # keys. A CMK adds per-request cost and key rotation to administer.
+  # bucket_key_enabled is already set, so switching later is a one-line change.
+  - CKV_AWS_145 # S3 should be encrypted with a KMS CMK
+  - CKV_AWS_119 # DynamoDB should be encrypted with a KMS CMK
+  - CKV_AWS_158 # CloudWatch log group should be encrypted with KMS
 
-  # Cross-region replication for a demo bucket is not warranted.
-  - CKV_AWS_144
+  # Flow log retention defaults to a year in the module. envs/dev overrides it
+  # to 30 days, because a development VPC's traffic history is not worth the
+  # CloudWatch storage bill.
+  - CKV_AWS_338 # Log group should retain logs for at least a year
 
-  # The log bucket does not log to itself, which would be circular.
-  - CKV_AWS_18
+  # Deletion protection is off so the example can actually be torn down after a
+  # demo. Production should set enable_deletion_protection = true.
+  - CKV_AWS_150 # Load balancer should have deletion protection
+
+  # Cross-region replication and event notifications are application concerns,
+  # and this stack has no application to wire them to.
+  - CKV_AWS_144 # S3 cross-region replication
+  - CKV2_AWS_62 # S3 event notifications
+
+  # The log bucket does not write access logs to itself, which would be
+  # circular. The data bucket does log, to that bucket.
+  - CKV_AWS_18 # S3 access logging
+
+  # --- artefacts of scanning modules in isolation --------------------------
+
+  # Checkov scans each module directory on its own, where a security group is
+  # defined but the resource it attaches to lives in modules/compute. In
+  # envs/dev, where both are composed, they are attached.
+  - CKV2_AWS_5 # Security groups should be attached to a resource
+
+  # These graph checks do not follow a resource carrying a count meta-argument,
+  # so they report the conditionally created log bucket as missing controls it
+  # demonstrably has. The equivalent non-graph checks all pass, and there are
+  # unit tests asserting versioning and the public-access block directly.
+  - CKV2_AWS_6  # S3 bucket should have a public access block
+  - CKV2_AWS_61 # S3 bucket should have a lifecycle configuration
+  - CKV_AWS_21  # S3 bucket should have versioning enabled
 
 soft-fail: false

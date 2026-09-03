@@ -86,7 +86,9 @@ variable "enable_flow_logs" {
 variable "flow_log_retention_days" {
   description = "Retention for the flow log group."
   type        = number
-  default     = 90
+  # A year by default, which is the usual baseline for anything an incident
+  # investigation might need. Non-production environments override it down.
+  default     = 365
 }
 
 variable "tags" {

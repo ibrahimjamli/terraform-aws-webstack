@@ -71,6 +71,12 @@ resource "aws_s3_bucket_lifecycle_configuration" "logs" {
     noncurrent_version_expiration {
       noncurrent_days = 30
     }
+
+    # The data bucket had this and the log bucket did not, which Checkov
+    # caught: incomplete uploads are invisible in the console but still billed.
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
   }
 
   depends_on = [aws_s3_bucket_versioning.logs]
