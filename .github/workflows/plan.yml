@@ -50,7 +50,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'eu-north-1' }}
           role-session-name: gha-plan-${{ github.run_id }}
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
