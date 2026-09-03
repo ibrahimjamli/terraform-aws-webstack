@@ -4,7 +4,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.70"
+      version = "~> 6.62"
     }
   }
   # Local state on purpose: this configuration creates the remote backend, so
