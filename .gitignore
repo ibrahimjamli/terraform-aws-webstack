@@ -1,0 +1,16 @@
+.terraform/
+# .terraform.lock.hcl is deliberately NOT ignored: committing it pins provider
+# versions and hashes, so CI resolves exactly what was tested locally.
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+.terraformrc
+terraform.rc
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.tflint.d/
