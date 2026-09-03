@@ -1,0 +1,35 @@
+# Checkov policy configuration.
+#
+# Every skip below names the reason. An unexplained skip is how a security
+# baseline quietly stops meaning anything.
+framework:
+  - terraform
+
+skip-check:
+  # The example stack has no domain and so no ACM certificate. The HTTPS
+  # listener and its TLS policy exist and are used whenever certificate_arn is
+  # supplied; see modules/compute/alb.tf.
+  - CKV_AWS_2   # ALB listener should use HTTPS
+  - CKV_AWS_103 # ALB should use TLS 1.2 or above
+
+  # Deletion protection is off so the example can be destroyed after a demo.
+  # A production copy should set enable_deletion_protection = true.
+  - CKV_AWS_150
+
+  # Access logging for the load balancer is wired up but only enabled when a
+  # bucket is passed, which the LocalStack environment deliberately does not do.
+  - CKV_AWS_91
+
+  # SSE-S3 rather than a customer-managed KMS key. A CMK adds per-request cost
+  # and key administration that this example does not justify; bucket_key_enabled
+  # is already set so switching later is a one-line change.
+  - CKV_AWS_145
+  - CKV_AWS_19
+
+  # Cross-region replication for a demo bucket is not warranted.
+  - CKV_AWS_144
+
+  # The log bucket does not log to itself, which would be circular.
+  - CKV_AWS_18
+
+soft-fail: false
