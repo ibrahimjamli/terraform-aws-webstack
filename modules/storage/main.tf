@@ -54,7 +54,7 @@ resource "aws_s3_bucket_versioning" "logs" {
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "logs" {
-  count = var.enable_access_logging ? 1 : 0
+  count = var.enable_access_logging && var.enable_lifecycle_rules ? 1 : 0
 
   bucket = aws_s3_bucket.logs[0].id
 
@@ -129,6 +129,8 @@ resource "aws_s3_bucket_versioning" "data" {
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "data" {
+  count = var.enable_lifecycle_rules ? 1 : 0
+
   bucket = aws_s3_bucket.data.id
 
   rule {

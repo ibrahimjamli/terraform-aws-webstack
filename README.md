@@ -8,7 +8,7 @@ A three-tier AWS web stack built as reusable Terraform modules: a VPC with
 public and private subnets, an auto scaling group behind an application load
 balancer, and S3 storage with the controls AWS leaves off by default.
 
-The pipeline runs 20 unit tests, a linter, a policy scanner, and a genuine
+The pipeline runs 22 unit tests, a linter, a policy scanner, and a genuine
 `terraform apply` against a LocalStack container on every push. None of it
 needs an AWS account, and none of it costs anything.
 
@@ -39,7 +39,7 @@ expensive.
 | Validate | `terraform validate` | Type errors and bad references, in all 7 directories |
 | Lint | tflint | Invalid instance types, undocumented variables, dead declarations |
 | Policy | Checkov | Unencrypted storage, public buckets, permissive security groups |
-| Unit tests | `terraform test` | 20 assertions about what the modules actually plan |
+| Unit tests | `terraform test` | 22 assertions about what the modules actually plan |
 | LocalStack | real `apply` | Dependency ordering, and resources read back from an API |
 | Idempotence | second `plan` | Configuration that recreates something on every run |
 
@@ -58,9 +58,12 @@ blocked. Then it plans again and fails if the second plan is not empty.
 
 **What LocalStack's free tier does not emulate**, and which this pipeline
 therefore does not claim to prove: the application load balancer, the auto
-scaling group, and NAT gateways. Those are covered by `validate`, the unit
-tests, and the policy scan. Reporting them as verified would be a green tick
-that means nothing.
+scaling group, and NAT gateways. S3 lifecycle configuration is a subtler case,
+it accepts the call and then never returns the configuration, so the provider's
+read-back poll times out after three minutes; the LocalStack environment turns
+that one resource off. All of it is covered by `validate`, the unit tests and
+the policy scan instead. Reporting them as verified would be a green tick that
+means nothing.
 
 An [architecture diagram](docs/architecture.md) shows the traffic path, the
 module dependencies and, in a table, exactly which components each check

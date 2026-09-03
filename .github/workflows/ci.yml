@@ -106,6 +106,10 @@ jobs:
       - name: Publish findings to the Security tab
         uses: github/codeql-action/upload-sarif@v3
         if: always() && hashFiles('checkov.sarif') != ''
+        # Code scanning uploads need a public repository or GitHub Advanced
+        # Security. Checkov itself already gates the build, so a private clone
+        # should not go red purely over the upload.
+        continue-on-error: true
         with:
           sarif_file: checkov.sarif
           category: checkov

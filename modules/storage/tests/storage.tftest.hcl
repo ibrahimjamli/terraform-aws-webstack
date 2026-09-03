@@ -80,3 +80,30 @@ run "log_bucket_is_created_by_default" {
     error_message = "Access logging should be on unless explicitly disabled."
   }
 }
+
+run "lifecycle_rules_are_on_by_default" {
+  command = plan
+
+  assert {
+    condition     = length(aws_s3_bucket_lifecycle_configuration.data) == 1
+    error_message = "Superseded versions would accumulate forever without a lifecycle rule."
+  }
+}
+
+run "lifecycle_rules_can_be_disabled_for_an_s3_backend_that_lacks_them" {
+  command = plan
+
+  variables {
+    enable_lifecycle_rules = false
+  }
+
+  assert {
+    condition     = length(aws_s3_bucket_lifecycle_configuration.data) == 0
+    error_message = "Disabling lifecycle rules should plan none."
+  }
+
+  assert {
+    condition     = length(aws_s3_bucket_lifecycle_configuration.logs) == 0
+    error_message = "The log bucket's lifecycle rule should follow the same switch."
+  }
+}

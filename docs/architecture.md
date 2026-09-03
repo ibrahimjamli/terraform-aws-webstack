@@ -77,7 +77,7 @@ flowchart TB
     push --> val["terraform validate<br/>7 directories"]
     push --> lint["tflint"]
     push --> pol["Checkov policy scan"]
-    push --> test["terraform test<br/>20 assertions"]
+    push --> test["terraform test<br/>22 assertions"]
 
     fmt --> ls
     val --> ls
@@ -108,15 +108,21 @@ and fails if the second plan is not empty.
 |---|:--:|:--:|:--:|:--:|:--:|
 | VPC, subnets, routing | yes | yes | yes | yes | yes |
 | Security groups | yes | yes | yes | yes | yes |
-| S3 | yes | yes | yes | yes | yes |
+| S3 buckets and controls | yes | yes | yes | yes | yes |
+| S3 lifecycle rules | yes | yes | yes | yes | no |
 | IAM | yes | yes | yes | — | partial |
 | NAT gateway | yes | yes | yes | yes | no |
 | Load balancer | yes | yes | yes | — | no |
 | Auto scaling group | yes | yes | yes | — | no |
 
-The three rows without a real apply are the services LocalStack's free tier
-does not emulate. They are listed here rather than quietly omitted, because a
-coverage claim that overstates itself is worse than no claim.
+The four rows without a real apply are the parts LocalStack's free tier does
+not emulate. Three of them it simply does not implement. S3 lifecycle rules are
+the subtler case: it accepts the configuration and then never returns it, so
+the provider's read-back poll times out after three minutes, which is why the
+LocalStack environment turns that one resource off.
+
+They are listed here rather than quietly omitted, because a coverage claim that
+overstates itself is worse than no claim.
 
 ## Cost
 

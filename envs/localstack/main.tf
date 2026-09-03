@@ -45,4 +45,9 @@ module "storage" {
   # and force_destroy keeps the CI teardown clean.
   enable_access_logging = false
   force_destroy         = true
+
+  # LocalStack accepts a lifecycle configuration and then does not return it,
+  # so the provider's read-back poll never converges and the apply times out.
+  # Lifecycle rules are covered by validate and the policy scan instead.
+  enable_lifecycle_rules = false
 }

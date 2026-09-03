@@ -24,6 +24,17 @@ variable "noncurrent_version_expiration_days" {
   default     = 90
 }
 
+variable "enable_lifecycle_rules" {
+  description = <<-EOT
+    Manage lifecycle configuration on the buckets. Should stay true anywhere
+    real. It exists because LocalStack's S3 accepts a lifecycle configuration
+    and then does not return it, so the AWS provider's read-back poll never
+    converges and the apply times out after three minutes.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "force_destroy" {
   description = <<-EOT
     Allow `terraform destroy` to delete a bucket that still holds objects.
