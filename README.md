@@ -62,6 +62,10 @@ scaling group, and NAT gateways. Those are covered by `validate`, the unit
 tests, and the policy scan. Reporting them as verified would be a green tick
 that means nothing.
 
+An [architecture diagram](docs/architecture.md) shows the traffic path, the
+module dependencies and, in a table, exactly which components each check
+covers.
+
 ## Design notes
 
 **No SSH anywhere.** There is no key pair, no bastion and no port 22 rule. The
