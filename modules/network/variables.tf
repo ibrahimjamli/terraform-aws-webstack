@@ -88,7 +88,7 @@ variable "flow_log_retention_days" {
   type        = number
   # A year by default, which is the usual baseline for anything an incident
   # investigation might need. Non-production environments override it down.
-  default     = 365
+  default = 365
 }
 
 variable "tags" {
