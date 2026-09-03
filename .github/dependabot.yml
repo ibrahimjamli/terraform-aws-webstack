@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: terraform
+    directories:
+      - /modules/network
+      - /modules/security
+      - /modules/storage
+      - /modules/compute
+      - /envs/dev
+      - /envs/localstack
+      - /bootstrap
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

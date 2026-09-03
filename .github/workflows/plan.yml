@@ -1,0 +1,126 @@
+name: Plan
+
+# Runs `terraform plan` against a real AWS account and posts the result as a
+# pull-request comment, so a reviewer sees what will change before approving.
+#
+# Dormant until an account is wired up: every job is guarded on the repository
+# variable AWS_ROLE_ARN, so a fork or a clone without AWS access gets a skipped
+# job rather than a red cross. To enable it, create an IAM role that trusts
+# GitHub's OIDC provider and set the variable to its ARN. See docs/oidc.md.
+
+on:
+  pull_request:
+    paths:
+      - "modules/**"
+      - "envs/**"
+      - ".github/workflows/plan.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: plan-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: "1.9.8"
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  plan:
+    name: Plan dev
+    runs-on: ubuntu-latest
+    # No AWS role configured means nothing to plan against.
+    if: vars.AWS_ROLE_ARN != ''
+    environment: dev
+    permissions:
+      contents: read
+      id-token: write      # required to mint the OIDC token
+      pull-requests: write # required to post the plan comment
+    steps:
+      - uses: actions/checkout@v4
+
+      # Short-lived credentials minted per run. No access key is ever stored
+      # in the repository, which is the point of the OIDC trust relationship.
+      - name: Assume the deployment role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-north-1' }}
+          role-session-name: gha-plan-${{ github.run_id }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: terraform init
+        working-directory: envs/dev
+        run: |
+          terraform init -input=false \
+            -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}" \
+            -backend-config="key=webstack/dev/terraform.tfstate" \
+            -backend-config="region=${{ vars.AWS_REGION || 'eu-north-1' }}" \
+            -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}" \
+            -backend-config="encrypt=true"
+
+      - name: terraform plan
+        id: plan
+        working-directory: envs/dev
+        run: |
+          set +e
+          terraform plan -input=false -no-color -lock-timeout=5m -out=tfplan > plan.txt 2>&1
+          code=$?
+          set -e
+          # Truncated so a large plan cannot exceed GitHub's comment size limit.
+          {
+            echo 'stdout<<PLANEOF'
+            head -c 60000 plan.txt
+            echo
+            echo PLANEOF
+          } >> "$GITHUB_OUTPUT"
+          exit $code
+
+      - name: Comment the plan on the pull request
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          PLAN: ${{ steps.plan.outputs.stdout }}
+          OUTCOME: ${{ steps.plan.outcome }}
+        with:
+          script: |
+            const marker = '<!-- terraform-plan-dev -->';
+            const body = [
+              marker,
+              `### Terraform plan for \`envs/dev\`: ${process.env.OUTCOME}`,
+              '',
+              '<details><summary>Show plan</summary>',
+              '',
+              '```terraform',
+              process.env.PLAN,
+              '```',
+              '',
+              '</details>',
+            ].join('\n');
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const existing = await github.rest.issues.listComments({ owner, repo, issue_number });
+            const mine = existing.data.find(c => c.body.startsWith(marker));
+
+            // Update in place rather than appending, so a long-lived pull
+            // request does not accumulate a wall of stale plans.
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Upload the plan file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-dev
+          path: envs/dev/tfplan
+          retention-days: 5
