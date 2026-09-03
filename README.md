@@ -56,6 +56,12 @@ VPC has the CIDR it should, there are four subnets, no private subnet
 auto-assigns public addresses, the bucket has versioning on and public access
 blocked. Then it plans again and fails if the second plan is not empty.
 
+That last check is scoped to the network and storage modules. LocalStack does
+not round-trip security group rules faithfully: it returns the referenced group
+id account-prefixed and drops the rule description, so a second plan reports an
+in-place update that real AWS would not. Narrowing the check keeps it
+meaningful; deleting it would not.
+
 **What LocalStack's free tier does not emulate**, and which this pipeline
 therefore does not claim to prove: the application load balancer, the auto
 scaling group, and NAT gateways. S3 lifecycle configuration is a subtler case,

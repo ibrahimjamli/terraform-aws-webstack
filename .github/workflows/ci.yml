@@ -232,10 +232,18 @@ jobs:
 
       # A second plan over unchanged code must be empty. A configuration that
       # always shows a diff is recreating something on every single run.
+      #
+      # Scoped to network and storage. The security module is excluded because
+      # LocalStack does not round-trip security group rules faithfully: it
+      # returns referenced_security_group_id account-prefixed
+      # ("000000000000/sg-...") and drops the rule description, so a second
+      # plan reports an in-place update that real AWS would not. Narrowing the
+      # check keeps it meaningful; deleting it would not.
       - name: Assert the plan is idempotent
         working-directory: envs/localstack
         run: |
-          terraform plan -input=false -detailed-exitcode && code=0 || code=$?
+          terraform plan -input=false -detailed-exitcode \
+            -target=module.network -target=module.storage && code=0 || code=$?
           if [ "$code" -eq 2 ]; then
             echo "::error::Re-planning unchanged configuration produced a diff"
             exit 1
