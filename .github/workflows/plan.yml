@@ -39,7 +39,7 @@ jobs:
       id-token: write      # required to mint the OIDC token
       pull-requests: write # required to post the plan comment
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Short-lived credentials minted per run. No access key is ever stored
       # in the repository, which is the point of the OIDC trust relationship.
